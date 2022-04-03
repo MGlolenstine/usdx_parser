@@ -3,7 +3,7 @@ name = "usdx_parser"
 version = "0.1.0"
 edition = "2021"
 description = "Parser for UltraStar Deluxe song files."
-license = "Apache-2.0 or MIT"
+license = "Apache-2.0 OR MIT"
 repository = "https://github.com/MGlolenstine/usdx_parser.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
