@@ -9,6 +9,7 @@ pub struct Song {
     /// Path to the audio file
     pub mp3: Option<String>,
     pub video: Option<String>,
+    pub edition: Option<String>,
     pub genre: Option<String>,
     pub year: Option<String>,
     pub language: Option<String>,
@@ -16,6 +17,7 @@ pub struct Song {
     pub bpm: u32,
     /// Delay in ms before the lyrics start after song
     pub gap: u32,
+    pub video_gap: Option<u32>,
     /// All notes with lyrics
     pub notes: Vec<Note>,
 }
@@ -60,6 +62,11 @@ impl TryFrom<String> for Song {
             .filter_map(|l| l.strip_prefix("#VIDEO:"))
             .map(|a| a.to_string())
             .next();
+        let edition = lines
+            .clone()
+            .filter_map(|l| l.strip_prefix("#EDITION:"))
+            .map(|a| a.to_string())
+            .next();
         let genre = lines
             .clone()
             .filter_map(|l| l.strip_prefix("#GENRE:"))
@@ -83,6 +90,11 @@ impl TryFrom<String> for Song {
         let gap = lines
             .clone()
             .filter_map(|l| l.strip_prefix("#GAP:"))
+            .map(|a| a.to_string())
+            .next();
+        let video_gap = lines
+            .clone()
+            .filter_map(|l| l.strip_prefix("#VIDEOGAP:"))
             .map(|a| a.to_string())
             .next();
         let notes = lines
@@ -112,16 +124,24 @@ impl TryFrom<String> for Song {
             bail!("No gap specified!");
         };
 
+        let video_gap = if let Some(a) = video_gap {
+            Some(a.parse::<u32>()?)
+        } else {
+            None
+        };
+
         Ok(Self {
             artist,
             title,
             mp3,
             video,
+            edition,
             genre,
             year,
             language,
             bpm,
             gap,
+            video_gap,
             notes,
         })
     }
@@ -134,22 +154,28 @@ impl ToString for Song {
             ret.push_str(&format!("#ARTIST:{}\n", artist));
         }
         ret.push_str(&format!("#TITLE:{}\n", self.title));
-        if let Some(artist) = self.mp3.as_ref() {
-            ret.push_str(&format!("#MP3:{}\n", artist));
+        if let Some(mp3) = self.mp3.as_ref() {
+            ret.push_str(&format!("#MP3:{}\n", mp3));
         }
-        if let Some(artist) = self.genre.as_ref() {
-            ret.push_str(&format!("#GENRE:{}\n", artist));
+        if let Some(edition) = self.edition.as_ref() {
+            ret.push_str(&format!("#EDITION:{}\n", edition));
         }
-        if let Some(artist) = self.year.as_ref() {
-            ret.push_str(&format!("#YEAR:{}\n", artist));
+        if let Some(genre) = self.genre.as_ref() {
+            ret.push_str(&format!("#GENRE:{}\n", genre));
         }
-        if let Some(artist) = self.language.as_ref() {
-            ret.push_str(&format!("#LANGUAGE:{}\n", artist));
+        if let Some(year) = self.year.as_ref() {
+            ret.push_str(&format!("#YEAR:{}\n", year));
+        }
+        if let Some(language) = self.language.as_ref() {
+            ret.push_str(&format!("#LANGUAGE:{}\n", language));
         }
         ret.push_str(&format!("#BPM:{}\n", self.bpm));
         ret.push_str(&format!("#GAP:{}\n", self.gap));
-        if let Some(artist) = self.video.as_ref() {
-            ret.push_str(&format!("#VIDEO:{}\n", artist));
+        if let Some(video) = self.video.as_ref() {
+            ret.push_str(&format!("#VIDEO:{}\n", video));
+        }
+        if let Some(video_gap) = self.video_gap.as_ref() {
+            ret.push_str(&format!("#VIDEOGAP:{}\n", video_gap));
         }
         for n in self.notes.iter() {
             ret.push_str(&n.to_string());
