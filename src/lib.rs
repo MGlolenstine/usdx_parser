@@ -198,7 +198,7 @@ pub struct Note {
     pub beat_number: u32,
     /// Number of beats this note lasts
     pub note_length: Option<u32>,
-    pub note_tone: Option<u32>,
+    pub note_tone: Option<i32>,
     /// String content for this note
     pub lyric: Option<String>,
 }
@@ -214,7 +214,7 @@ impl TryFrom<&str> for Note {
             (None, None, None)
         } else {
             let note_length = splot.next().unwrap().parse::<u32>()?;
-            let note_tone = splot.next().unwrap().parse::<u32>()?;
+            let note_tone = splot.next().unwrap().parse::<i32>()?;
             let lyric = splot.collect::<Vec<_>>().join(" ");
             (Some(note_length), Some(note_tone), Some(lyric))
         };
