@@ -1,5 +1,5 @@
-use std::str::FromStr;
 use anyhow::{bail, Result};
+use std::str::FromStr;
 
 /// Song information
 #[derive(Debug, Clone)]
@@ -8,7 +8,9 @@ pub struct Song {
     pub title: String,
     /// Path to the audio file
     pub mp3: Option<String>,
+    pub video: Option<String>,
     pub genre: Option<String>,
+    pub year: Option<String>,
     pub language: Option<String>,
     /// Beats per minute
     pub bpm: u32,
@@ -24,7 +26,7 @@ impl TryFrom<String> for Song {
     /// ```
     /// use usdx_parser::Song;
     /// use anyhow::Result;
-    /// 
+    ///
     /// let text = r#"
     /// #ARTIST:Three Days Grace
     /// #TITLE:I Hate Everything About You
@@ -53,9 +55,19 @@ impl TryFrom<String> for Song {
             .filter_map(|l| l.strip_prefix("#MP3:"))
             .map(|a| a.to_string())
             .next();
+        let video = lines
+            .clone()
+            .filter_map(|l| l.strip_prefix("#VIDEO:"))
+            .map(|a| a.to_string())
+            .next();
         let genre = lines
             .clone()
             .filter_map(|l| l.strip_prefix("#GENRE:"))
+            .map(|a| a.to_string())
+            .next();
+        let year = lines
+            .clone()
+            .filter_map(|l| l.strip_prefix("#YEAR:"))
             .map(|a| a.to_string())
             .next();
         let language = lines
@@ -104,7 +116,9 @@ impl TryFrom<String> for Song {
             artist,
             title,
             mp3,
+            video,
             genre,
+            year,
             language,
             bpm,
             gap,
@@ -113,11 +127,44 @@ impl TryFrom<String> for Song {
     }
 }
 
+impl ToString for Song {
+    fn to_string(&self) -> String {
+        let mut ret = String::new();
+        if let Some(artist) = self.artist.as_ref() {
+            ret.push_str(&format!("#ARTIST:{}\n", artist));
+        }
+        ret.push_str(&format!("#TITLE:{}\n", self.title));
+        if let Some(artist) = self.mp3.as_ref() {
+            ret.push_str(&format!("#MP3:{}\n", artist));
+        }
+        if let Some(artist) = self.genre.as_ref() {
+            ret.push_str(&format!("#GENRE:{}\n", artist));
+        }
+        if let Some(artist) = self.year.as_ref() {
+            ret.push_str(&format!("#YEAR:{}\n", artist));
+        }
+        if let Some(artist) = self.language.as_ref() {
+            ret.push_str(&format!("#LANGUAGE:{}\n", artist));
+        }
+        ret.push_str(&format!("#BPM:{}\n", self.bpm));
+        ret.push_str(&format!("#GAP:{}\n", self.gap));
+        if let Some(artist) = self.video.as_ref() {
+            ret.push_str(&format!("#VIDEO:{}\n", artist));
+        }
+        for n in self.notes.iter() {
+            ret.push_str(&n.to_string());
+            ret.push('\n');
+        }
+        ret.push_str("E\n");
+        ret
+    }
+}
+
 impl Song {
     /// Parse song from file
     /// ```rust
     /// use usdx_parser::Song;
-    /// 
+    ///
     /// let song = Song::from_file("tests/i_hate_everything_about_you.txt");
     /// assert!(song.is_ok());
     /// ```
@@ -133,7 +180,7 @@ impl FromStr for Song {
     /// ```rust
     /// use usdx_parser::Song;
     /// use std::str::FromStr;
-    /// 
+    ///
     /// let text = std::fs::read_to_string("tests/i_hate_everything_about_you.txt").unwrap();
     /// let song = Song::from_str(&text);
     /// assert!(song.is_ok());
@@ -181,6 +228,22 @@ impl TryFrom<&str> for Note {
     }
 }
 
+impl ToString for Note {
+    fn to_string(&self) -> String {
+        match self.note_type {
+            NoteType::LineBreak => format!("{} {}", self.note_type.to_string(), self.beat_number),
+            _ => format!(
+                "{} {} {} {} {}",
+                self.note_type.to_string(),
+                self.beat_number,
+                self.note_length.unwrap(),
+                self.note_tone.unwrap(),
+                self.lyric.as_ref().unwrap()
+            ),
+        }
+    }
+}
+
 /// Type of the note present.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NoteType {
@@ -202,4 +265,25 @@ impl TryFrom<&str> for NoteType {
             _ => bail!("Unknown note type: {}", value),
         })
     }
+}
+
+impl ToString for NoteType {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Normal => ":",
+            Self::Golden => "*",
+            Self::Freestyle => "F",
+            Self::LineBreak => "-",
+        }
+        .to_string()
+    }
+}
+
+#[test]
+pub fn test_manual_serde(){
+    let text = std::fs::read_to_string("tests/i_hate_everything_about_you.txt").unwrap();
+    let song = Song::from_str(&text);
+    assert!(song.is_ok());
+    let song = song.unwrap();
+    assert_eq!(text.replace("\r\n", "\n"), song.to_string());
 }
