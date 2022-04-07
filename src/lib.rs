@@ -14,7 +14,7 @@ pub struct Song {
     pub year: Option<String>,
     pub language: Option<String>,
     /// Beats per minute
-    pub bpm: u32,
+    pub bpm: f32,
     /// Delay in ms before the lyrics start after song
     pub gap: u32,
     pub video_gap: Option<u32>,
@@ -109,7 +109,7 @@ impl TryFrom<String> for Song {
         };
 
         let bpm = if let Some(a) = bpm {
-            if let Ok(a) = a.parse::<u32>() {
+            if let Ok(a) = a.parse::<f32>() {
                 a
             } else {
                 bail!("BPM specified failed to be parsed!");
