@@ -109,6 +109,7 @@ impl TryFrom<String> for Song {
         };
 
         let bpm = if let Some(a) = bpm {
+            let a = a.replace(",", ".");
             if let Ok(a) = a.parse::<f32>() {
                 a
             } else {
@@ -169,7 +170,7 @@ impl ToString for Song {
         if let Some(language) = self.language.as_ref() {
             ret.push_str(&format!("#LANGUAGE:{}\n", language));
         }
-        ret.push_str(&format!("#BPM:{}\n", self.bpm));
+        ret.push_str(&format!("#BPM:{}\n", self.bpm.to_string().replace(".", ",")));
         ret.push_str(&format!("#GAP:{}\n", self.gap));
         if let Some(video) = self.video.as_ref() {
             ret.push_str(&format!("#VIDEO:{}\n", video));
@@ -307,7 +308,7 @@ impl ToString for NoteType {
 
 #[test]
 pub fn test_manual_serde(){
-    let text = std::fs::read_to_string("tests/i_hate_everything_about_you.txt").unwrap();
+    let text = std::fs::read_to_string("tests/queen_bohemian_rhapsody.txt").unwrap();
     let song = Song::from_str(&text);
     assert!(song.is_ok());
     let song = song.unwrap();
