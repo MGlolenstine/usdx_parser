@@ -97,9 +97,28 @@ impl TryFrom<String> for Song {
             .filter_map(|l| l.strip_prefix("#VIDEOGAP:"))
             .map(|a| a.to_string())
             .next();
+        let relative = lines
+            .clone()
+            .filter_map(|l| l.strip_prefix("#RELATIVE:"))
+            .map(|a| a.to_string())
+            .next()
+            .unwrap_or("no".to_string());
+        let relative = parse_yes_no(&relative);
+        let mut counter = 0;
         let notes = lines
             .filter(|a| !(a.starts_with('#') || a.starts_with('E') || a.is_empty()))
             .filter_map(|a| Note::try_from(a).ok())
+            .map(|mut note| {
+                if relative {
+                    if let Some(offset) = note.update_offset() {
+                        note.offset(counter);
+                        counter += offset;
+                    } else {
+                        note.offset(counter);
+                    }
+                }
+                note
+            })
             .collect::<Vec<_>>();
 
         let title = if let Some(a) = title {
@@ -109,7 +128,7 @@ impl TryFrom<String> for Song {
         };
 
         let bpm = if let Some(a) = bpm {
-            let a = a.replace(",", ".");
+            let a = a.replace(',', ".");
             if let Ok(a) = a.parse::<f32>() {
                 a
             } else {
@@ -148,6 +167,14 @@ impl TryFrom<String> for Song {
     }
 }
 
+fn parse_yes_no(input: &str) -> bool {
+    match input {
+        "yes" | "true" => true,
+        "no" | "false" => false,
+        _ => unimplemented!(),
+    }
+}
+
 impl ToString for Song {
     fn to_string(&self) -> String {
         let mut ret = String::new();
@@ -170,7 +197,10 @@ impl ToString for Song {
         if let Some(language) = self.language.as_ref() {
             ret.push_str(&format!("#LANGUAGE:{}\n", language));
         }
-        ret.push_str(&format!("#BPM:{}\n", self.bpm.to_string().replace(".", ",")));
+        ret.push_str(&format!(
+            "#BPM:{}\n",
+            self.bpm.to_string().replace('.', ",")
+        ));
         ret.push_str(&format!("#GAP:{}\n", self.gap));
         if let Some(video) = self.video.as_ref() {
             ret.push_str(&format!("#VIDEO:{}\n", video));
@@ -228,6 +258,23 @@ pub struct Note {
     pub note_tone: Option<i32>,
     /// String content for this note
     pub lyric: Option<String>,
+}
+
+impl Note {
+    // Updates the offset if the note is LineBreak
+    pub fn update_offset(&self) -> Option<u32> {
+        if self.note_type == NoteType::LineBreak {
+            Some(self.beat_number)
+        } else {
+            None
+        }
+    }
+
+    // Offsets the note by `n` beats.
+    // Used for relative lyrics
+    pub fn offset(&mut self, n: u32) {
+        self.beat_number += n;
+    }
 }
 
 impl TryFrom<&str> for Note {
@@ -307,10 +354,20 @@ impl ToString for NoteType {
 }
 
 #[test]
-pub fn test_manual_serde(){
+pub fn test_manual_serde() {
     let text = std::fs::read_to_string("tests/queen_bohemian_rhapsody.txt").unwrap();
     let song = Song::from_str(&text);
     assert!(song.is_ok());
     let song = song.unwrap();
     assert_eq!(text.replace("\r\n", "\n"), song.to_string());
+}
+
+#[test]
+pub fn test_manual_serde_relative() {
+    let text = std::fs::read_to_string("tests/please_tell_rosie.txt").unwrap();
+    let song = Song::from_str(&text);
+    assert!(song.is_ok());
+    let song = song.unwrap();
+    // dbg!(song);
+    println!("{}", song.to_string());
 }
